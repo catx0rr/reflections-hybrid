@@ -6,15 +6,15 @@ set -euo pipefail
 # Installs the Reflections skill and initializes the workspace topology.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/catx0rr/reflections/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/catx0rr/reflections-hybrid/main/install.sh | bash
 #
 # Override defaults:
 #   CONFIG_ROOT="$HOME/.openclaw" \
 #   WORKSPACE="$HOME/.openclaw/workspace" \
 #   SKILLS_PATH="$HOME/.openclaw/workspace/skills" \
-#   curl -fsSL https://raw.githubusercontent.com/catx0rr/reflections/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/catx0rr/reflections-hybrid/main/install.sh | bash
 
-REPO_URL="https://github.com/catx0rr/reflections.git"
+REPO_URL="https://github.com/catx0rr/reflections-hybrid.git"
 
 CONFIG_ROOT="${CONFIG_ROOT:-$HOME/.openclaw}"
 WORKSPACE="${WORKSPACE:-$HOME/.openclaw/workspace}"

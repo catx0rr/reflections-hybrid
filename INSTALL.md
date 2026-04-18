@@ -39,7 +39,7 @@ If the skill is not installed, the operator should run `install.sh` first (see R
 export SKILL_PARENT="$HOME/.openclaw/workspace/skills"
 export SKILL_ROOT="$SKILL_PARENT/reflections"
 mkdir -p "$SKILL_PARENT"
-git clone https://github.com/catx0rr/reflections.git "$SKILL_ROOT"
+git clone https://github.com/catx0rr/reflections-hybrid.git "$SKILL_ROOT"
 ```
 
 ---

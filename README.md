@@ -118,7 +118,7 @@ Key config fields in `reflections.json` (see `references/memory-template.md` for
 ### Option 1: Quick Install (operator)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/catx0rr/reflections/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/catx0rr/reflections-hybrid/main/install.sh | bash
 ```
 
 Override defaults if needed:
@@ -127,7 +127,7 @@ Override defaults if needed:
 CONFIG_ROOT="$HOME/.openclaw" \
 WORKSPACE="$HOME/.openclaw/workspace" \
 SKILLS_PATH="$HOME/.openclaw/workspace/skills" \
-curl -fsSL https://raw.githubusercontent.com/catx0rr/reflections/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/catx0rr/reflections-hybrid/main/install.sh | bash
 ```
 
 ### Option 2: Agent Setup
