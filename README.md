@@ -1,4 +1,4 @@
-# Reflections v1.4.0
+# Reflections v1.5.0
 
 Reflections preserves the same reflection/scoring role as Auto-Dream, uses memory-core-safe long-term surfaces, and applies profile-driven admission before durable promotion.
 
@@ -71,7 +71,7 @@ Reflections does **NOT**:
 - **Multi-mode consolidation** -- rem (6h), deep (12h), core (daily) dispatch cadence
 - **Importance scoring** -- recency-weighted, reference-boosted entry scoring (used for archival)
 - **Configurable scored admission (strictMode)** -- when enabled, minScore/minRecallCount/minUnique thresholds gate candidates before promotion; non-qualified items are recorded in a persistent deferred store (`runtime/reflections-deferred.jsonl`) and deterministically suppressed on future cycles. Default: `false` for personal-assistant (parity flow), `true` for business-employee (strict fork). Strictness is profile-opt-in, not global.
-- **Durability filter (v1.3.0 full route set, strictMode AND durability.enabled)** -- second-stage semantic admission after the structural gate. Routes each candidate into one of five lanes: `promote` (new durable node), `merge` (reinforce existing node, no new surface entry), `compress` (upsert trend node in `memory/TRENDS.md`), `defer` (re-evaluate next cycle), or `reject` (discard). Hard-promote triggers rescue rare one-off high-consequence items that structural scoring underweights; hard-suppress triggers reject telemetry noise regardless of reinforcement. Trend-to-durable promotion: an accumulated trend becomes eligible for RTMEMORY only when a fresh cycle adds a hard-promote trigger AND the trend meets support thresholds. Default on for business-employee; off for personal-assistant.
+- **Durability filter (v1.3.0 full route set, strictMode AND durability.enabled)** -- second-stage semantic admission after the structural gate. Routes each candidate into one of five lanes: `promote` (new durable node), `merge` (reinforce existing node, no new surface entry), `compress` (upsert trend node in `TRENDS.md`), `defer` (re-evaluate next cycle), or `reject` (discard). Hard-promote triggers rescue rare one-off high-consequence items that structural scoring underweights; hard-suppress triggers reject telemetry noise regardless of reinforcement. Trend-to-durable promotion: an accumulated trend becomes eligible for RTMEMORY only when a fresh cycle adds a hard-promote trigger AND the trend meets support thresholds. Default on for business-employee; off for personal-assistant.
 - **Fast-path markers** -- PERMANENT/HIGH/PIN recognized for archival immunity and strict-mode routing
 - **Intelligent forgetting** -- old low-importance entries archived, never deleted
 - **Knowledge graph** -- semantic relation linking with reachability metrics
@@ -79,6 +79,7 @@ Reflections does **NOT**:
 - **Push notifications** -- silent, summary, or full consolidation reports
 - **Dashboard template** (optional, operator-driven) -- zero-dependency HTML template at `references/dashboard-template.html`. Rendering is not part of the automated cycle; operators can use it manually or via external tooling.
 - **Cross-instance export/import** -- portable JSON bundles with conflict resolution
+- **Token-usage visibility (v1.5.0)** -- every telemetry event carries a `token_usage` block (`prompt_tokens` / `completion_tokens` / `total_tokens` / `source ∈ {exact, approximate, unavailable}`). Scripts own the math: `append_memory_log.py` and `report.py` accept either exact token args (from host metadata) or `--prompt-chars` / `--completion-chars` (in which case the `ceil(chars/4)` approximation is computed internally and labeled `approximate`). The runtime prompt never computes token counts itself. `index.py --update-stats` appends to `stats.tokenHistory` only when source is `exact` or `approximate`; `weekly.py` rolls up in-window totals. Final notification emits a compact `🪙 Token Usage:` line (omits when unavailable). Visibility-only — does not affect scoring, gating, deferring, routing, or archival behavior.
 
 ## Manual Triggers
 

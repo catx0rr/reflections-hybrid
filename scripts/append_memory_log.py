@@ -32,10 +32,79 @@ Usage:
 import argparse
 import hashlib
 import json
+import math
 import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+# ──────────────────────── token_usage resolution (v1.5.0) ────────────────────────
+#
+# "Scripts own math" rule: the runtime prompt never computes ceil(chars/4). It
+# passes either exact token counts from host metadata, or char counts, or neither.
+# This helper resolves the three-way ladder deterministically. Shared in spirit
+# with scripts/report.py; keep both in sync.
+#
+# Ladder:
+#   1. --token-source exact AND (--token-total OR --token-prompt) present → exact
+#   2. --prompt-chars OR --completion-chars present → approximate (ceil(n/4))
+#   3. otherwise → unavailable (nulls)
+
+def resolve_token_usage(args) -> dict:
+    """Resolve token_usage per v1.5.0 ladder. Never fabricates 'exact'."""
+    src = getattr(args, 'token_source', None) or 'unavailable'
+    pt = getattr(args, 'token_prompt', None)
+    ct = getattr(args, 'token_completion', None)
+    tt = getattr(args, 'token_total', None)
+    pc = getattr(args, 'prompt_chars', None)
+    cc = getattr(args, 'completion_chars', None)
+
+    if src == 'exact' and (tt is not None or pt is not None or ct is not None):
+        # Verbatim pass-through of host-provided metadata
+        return {
+            'prompt_tokens': pt,
+            'completion_tokens': ct,
+            'total_tokens': tt,
+            'source': 'exact',
+        }
+
+    if pc is not None or cc is not None:
+        # Compute approximation inside the script — runtime never does this
+        est_pt = math.ceil(pc / 4) if pc is not None else None
+        est_ct = math.ceil(cc / 4) if cc is not None else None
+        est_tt = ((est_pt or 0) + (est_ct or 0)) if (est_pt is not None or est_ct is not None) else None
+        return {
+            'prompt_tokens': est_pt,
+            'completion_tokens': est_ct,
+            'total_tokens': est_tt,
+            'source': 'approximate',
+        }
+
+    # Neither exact nor char counts — unavailable. Envelope always carries the block.
+    return {
+        'prompt_tokens': None,
+        'completion_tokens': None,
+        'total_tokens': None,
+        'source': 'unavailable',
+    }
+
+
+def _add_token_args(parser) -> None:
+    """Register the 6 token CLI args. Shared signature with report.py."""
+    parser.add_argument('--token-prompt', type=int, default=None,
+                        help='Exact prompt tokens from host metadata')
+    parser.add_argument('--token-completion', type=int, default=None,
+                        help='Exact completion tokens from host metadata')
+    parser.add_argument('--token-total', type=int, default=None,
+                        help='Exact total tokens from host metadata')
+    parser.add_argument('--token-source', choices=['exact', 'approximate', 'unavailable'],
+                        default='unavailable',
+                        help='Source of token_usage values (default: unavailable)')
+    parser.add_argument('--prompt-chars', type=int, default=None,
+                        help='Char count of prompt input (fallback for approximation)')
+    parser.add_argument('--completion-chars', type=int, default=None,
+                        help='Char count of model output (fallback for approximation)')
 
 
 def _timestamp_pair() -> dict:
@@ -123,6 +192,9 @@ def main():
         help='Error message (used when --status error)'
     )
 
+    # v1.5.0: token-usage CLI args (shared with report.py)
+    _add_token_args(parser)
+
     args = parser.parse_args()
 
     # Resolve telemetry root
@@ -143,6 +215,8 @@ def main():
         'agent': args.agent_id,
         'profile': args.profile,
         'mode': args.mode,
+        # v1.5.0: token_usage envelope — always present (nulls when unavailable)
+        'token_usage': resolve_token_usage(args),
     }
 
     # Parse details

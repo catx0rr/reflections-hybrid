@@ -143,6 +143,12 @@ python3 $SCRIPTS_DIR/append_memory_log.py \
   "agent": "main",
   "profile": "business-employee",
   "mode": "scheduled",
+  "token_usage": {
+    "prompt_tokens": 4320,
+    "completion_tokens": 812,
+    "total_tokens": 5132,
+    "source": "exact"
+  },
   "details": {
     "logs_scanned": 3,
     "logs_marked_consolidated": 2,
@@ -180,6 +186,12 @@ python3 $SCRIPTS_DIR/append_memory_log.py \
   "agent": "main",
   "profile": "business-employee",
   "mode": "scheduled",
+  "token_usage": {
+    "prompt_tokens": 3900,
+    "completion_tokens": 680,
+    "total_tokens": 4580,
+    "source": "approximate"
+  },
   "details": {
     "logs_scanned": 3,
     "logs_marked_consolidated": 2,
@@ -212,6 +224,12 @@ python3 $SCRIPTS_DIR/append_memory_log.py \
   "agent": "main",
   "profile": "personal-assistant",
   "mode": "scheduled",
+  "token_usage": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": null,
+    "source": "unavailable"
+  },
   "details": {
     "logs_scanned": 7,
     "logs_marked_consolidated": 7,
@@ -242,6 +260,7 @@ python3 $SCRIPTS_DIR/append_memory_log.py \
 | `agent` | string | yes | Agent identifier (default: `"main"`) |
 | `profile` | string | yes | Active profile: `"personal-assistant"` or `"business-employee"` |
 | `mode` | string | yes | Run mode: `"scheduled"`, `"manual"`, `"first-reflection"` |
+| `token_usage` | object | yes (v1.5.0+) | Per-run token counts. Always present — nulls when unavailable. See §Token-usage provenance below. |
 | `details` | object | no | Run metrics (see below) |
 | `error` | string | no | Error message when `status` is `"error"` |
 
@@ -267,6 +286,89 @@ python3 $SCRIPTS_DIR/append_memory_log.py \
 | `writes.episodes` | number | all | Entries written to episodes |
 | `writes.index_updates` | number | all | Index entries added or updated |
 | `duration_ms` | number | all | Total run duration in milliseconds |
+
+---
+
+## Token-Usage Provenance (v1.5.0+)
+
+Visibility-only field — never affects scoring, gating, deferring, durability routing, merge/compress/trend, log marking, or archival.
+
+### Shape
+
+```json
+"token_usage": {
+  "prompt_tokens":     <int|null>,
+  "completion_tokens": <int|null>,
+  "total_tokens":      <int|null>,
+  "source":            "exact" | "approximate" | "unavailable"
+}
+```
+
+The envelope always carries the block. When `source == "unavailable"`, all three numbers are `null`.
+
+### Source resolution (script-owned)
+
+`append_memory_log.py` and `report.py` apply this ladder internally via a shared `resolve_token_usage()` helper. The runtime prompt never computes `ceil(chars/4)` itself.
+
+| Ladder | Caller passes | Script assigns |
+|---|---|---|
+| 1 | `--token-source exact` AND any of `--token-prompt` / `--token-completion` / `--token-total` | `source: "exact"`, values verbatim |
+| 2 | `--prompt-chars` AND/OR `--completion-chars` (no `--token-source exact`) | `source: "approximate"`, values = `ceil(chars / 4)` |
+| 3 | Neither above | `source: "unavailable"`, all values `null` |
+
+**Never fabricate `"exact"`.** If the value didn't come from host-provided metadata, it is not exact.
+
+### Approximation rule (lives inside the scripts)
+
+```
+estimated_tokens = ceil(char_count / 4)
+```
+
+Same formula in both `append_memory_log.py` and `report.py` (shared helper). Any call site passing `--prompt-chars` / `--completion-chars` gets `source: "approximate"` automatically — the runtime never computes or labels this itself.
+
+### Stats persistence (Step 3.6 contract)
+
+The runtime's Step 3.6 includes `token_usage` in the stats payload passed to `index.py --update-stats`. `index.py` appends `{date, total_tokens, source}` to `stats.tokenHistory` (cap last 90) **only** when `source ∈ {exact, approximate}`. Unavailable entries are NOT appended — no fabrication, no placeholder rows.
+
+Without this wiring, `stats.tokenHistory` stays empty and `weekly.py` cannot roll up weekly totals.
+
+### Weekly rollup (weekly.py)
+
+`weekly.py` reads `stats.tokenHistory` and emits:
+
+```json
+"weekly_tokens": {
+  "total": <int|null>,
+  "source": "exact" | "approximate" | "unavailable"
+}
+```
+
+Rules:
+- Sum `total_tokens` over tokenHistory entries within the window.
+- If **any** in-window entry has `source: "approximate"` → whole rollup flagged `approximate`.
+- If no in-window entries → `total: null`, `source: "unavailable"` → runtime omits the line.
+- Never backfill missing historical totals.
+
+### Notification line format (Step 4.4)
+
+- Exact, triple-count available: `🪙 Token Usage: {prompt_tokens} in / {completion_tokens} out / {total_tokens} total`
+- Exact, total-only: `🪙 Token Usage: {total_tokens}`
+- Approximate: replace `Token Usage:` → `Token Usage (approx):` — applies to either variant above.
+- Unavailable: **omit the entire line**. Do not emit placeholders.
+
+### Cycle log line format
+
+Human-readable log (`memory/.reflections-log.md`) — terser:
+
+- Exact: `🪙 Tokens: {prompt_tokens} in / {completion_tokens} out / {total_tokens} total`
+- Approximate: `🪙 Tokens (approx): ...`
+- Unavailable: omit.
+
+### Weekly notification line (when weekly block fires)
+
+- Exact: `🪙 Weekly tokens: {weekly_tokens.total} total`
+- Approximate: `🪙 Weekly tokens (approx): {weekly_tokens.total} total`
+- Unavailable: omit.
 
 ---
 
@@ -310,6 +412,8 @@ Append-only markdown log of reflection reports. One report section per run. This
 
 ### Suggestions
 - <actionable suggestion>
+
+🪙 Tokens: {per §Token-usage provenance — `Tokens:` exact, `Tokens (approx):` approximate, omit when unavailable}
 ```
 
 ---

@@ -281,7 +281,7 @@ Naming convention: `episodes/<kebab-case-name>.md`
 
 ---
 
-## memory/TRENDS.md (v1.3.0+)
+## TRENDS.md (v1.3.0+)
 
 Single canonical file surfacing trend nodes that accumulate repeated weak ops material. Mirrors `RTMEMORY.md`'s structure (human-readable sections rendered from `runtime/reflections-metadata.json` entries where `memoryType == "trend"`).
 
@@ -289,7 +289,7 @@ Single canonical file surfacing trend nodes that accumulate repeated weak ops ma
 - **RTMEMORY.md** = durable reflective conclusions, lessons, decisions, identity/relationship shifts
 - **PROCEDURES.md** = repeatable know-how, validated workflows
 - **episodes/** = bounded historical incidents/narratives
-- **memory/TRENDS.md** = repeated reality/pattern without stable method (recurring gateway instability, repeated weak blocker pattern, recurring support issue pattern)
+- **TRENDS.md** = repeated reality/pattern without stable method (recurring gateway instability, repeated weak blocker pattern, recurring support issue pattern)
 - **memory/.reflections-archive.md** = low-importance compressed archive
 
 Trend entries land here via `durability.py` routing `compress` and `index.py --compress-trend` upserting. A trend entry later becomes eligible to promote into RTMEMORY as a durable conclusion only when its `trendSupportCount` + `uniqueDayCount` pass the profile's thresholds AND a fresh candidate cycle adds a hard-promote trigger.

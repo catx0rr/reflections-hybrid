@@ -135,6 +135,24 @@ def compute_weekly(index_path: str, days: int = 7, top: int = 3) -> dict:
         for e in weekly_touched[:top]
     ]
 
+    # v1.5.0: weekly_tokens — sum total_tokens over stats.tokenHistory entries
+    # within the window. Only entries with source ∈ {exact, approximate} are in
+    # tokenHistory (index.py doesn't append unavailable rows). If any window
+    # entry is approximate, the rollup is flagged approximate. If no entries
+    # fall in-window, source = "unavailable" and the runtime omits the line.
+    token_history = index.get('stats', {}).get('tokenHistory', [])
+    in_window = []
+    for row in token_history:
+        row_date = _parse_iso_date(row.get('date', ''))
+        if row_date is not None and row_date >= cutoff and row.get('total_tokens') is not None:
+            in_window.append(row)
+    if in_window:
+        tokens_total = sum(int(r.get('total_tokens') or 0) for r in in_window)
+        tokens_src = 'approximate' if any(r.get('source') == 'approximate' for r in in_window) else 'exact'
+    else:
+        tokens_total = None
+        tokens_src = 'unavailable'
+
     return {
         'ok': True,
         'window_days': days,
@@ -147,6 +165,10 @@ def compute_weekly(index_path: str, days: int = 7, top: int = 3) -> dict:
         'weekly_updated': len(weekly_updated_entries),
         'weekly_archived': weekly_archived,
         'biggest_memories': biggest,
+        'weekly_tokens': {
+            'total': tokens_total,
+            'source': tokens_src,
+        },
     }
 
 

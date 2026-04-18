@@ -20,7 +20,7 @@ TMPDIR         = system temp directory
 | Reflective memory | `RTMEMORY.md` |
 | Procedures | `PROCEDURES.md` |
 | Episodes | `episodes/*.md` |
-| Trends | `memory/TRENDS.md` |
+| Trends | `TRENDS.md` |
 | Index | `runtime/reflections-metadata.json` |
 | Log | `memory/.reflections-log.md` |
 | Archive | `memory/.reflections-archive.md` |
@@ -33,6 +33,8 @@ TMPDIR         = system temp directory
 - Internal details go only to telemetry and log files.
 - Chat emits exactly one of: the final Step 4.4 summary, a blocker message, or nothing (when `sendReport == false`).
 - Scripts are the source of deterministic logic. The LLM supplies semantic judgment only.
+
+**Runtime token-usage rule** (applied by Steps 3.6 + 4.2): if host metadata exposes exact token counts → pass exact args; else if prompt/completion char counts are known → pass char args (scripts resolve approximate via `ceil(chars/4)`); else pass no token args → scripts default to `source: "unavailable"`. Never fabricate `"exact"`. Full ladder in `references/runtime-templates.md` §Token-usage.
 
 ---
 
@@ -75,8 +77,6 @@ Continue only when modes are due AND work exists. Otherwise skip.
 
 ## Step 0-B: Skip With Recall [SCRIPT + LLM]
 
-Skipped runs are valid outcomes.
-
 ```bash
 python3 $SCRIPTS_DIR/append_memory_log.py \
   --telemetry-dir $TELEMETRY_ROOT \
@@ -93,13 +93,9 @@ python3 $SCRIPTS_DIR/report.py \
   --kind skip > $TMPDIR/reflections-report-skip.json
 ```
 
-Read `$WORKSPACE_ROOT/runtime/memory-state.json`. If `reflections.reporting.sendReport != true` → emit nothing, END.
+Read `runtime/memory-state.json`. If `reflections.reporting.sendReport != true` → END.
 
-Otherwise emit the skip message using **only** values from the two JSON outputs:
-- `reflections-stale.json` → memory-recall line
-- `reflections-report-skip.json` → `total_after`, `health_score`, `streak`, `next_due`, `active_modes`
-
-Do not invent any field. Do not read from `memory-state.json` or config directly for these values. If a field is null, omit its line.
+Otherwise emit the message below using **only** values from the two JSON outputs (`reflections-stale.json` → recall line; `reflections-report-skip.json` → `total_after`, `health_score`, `streak`, `next_due`, `active_modes`). Omit any line whose source is null. Never invent fields.
 
 ```
 💭 No modes due — skipped reflection
@@ -262,22 +258,21 @@ After this, each in-scope candidate carries:
 
 Process daily logs one at a time. Dispatch per-route.
 
-**When `DURABILITY_ON == true`** — route-driven:
+**`DURABILITY_ON == true`** — route-driven:
 
 | `route` | Action |
 |---------|--------|
 | `promote` | Append to destination file (`RTMEMORY.md` / `PROCEDURES.md` / `episodes/<name>.md`), then `index.py --add $TMPDIR/entry.json`. |
 | `merge` | `index.py --reinforce <mergedInto> --from $TMPDIR/merge.json`. No new surface entry. |
-| `compress` | `index.py --compress-trend <trendKey> --from $TMPDIR/trend.json`. Also upsert the `### <trendKey>` section in `memory/TRENDS.md`. |
-| `defer` | No action. Already persisted by Step 1.6/1.8. |
-| `reject` | No action. Discarded. |
+| `compress` | `index.py --compress-trend <trendKey> --from $TMPDIR/trend.json`. Also upsert the `### <trendKey>` section in `TRENDS.md`. |
+| `defer` | No action — already persisted by Step 1.6 / 1.8. |
+| `reject` | No action — discarded. |
 
-**When `DURABILITY_ON == false`, `STRICT_MODE == true`:**
-- Promotion-eligible = `deferred_status != "persisted"` AND `gate_status == "qualified"`.
-- Dispatch eligible candidates via semantic LLM routing: reflective content → `RTMEMORY.md`, procedures/preferences → `PROCEDURES.md`, multi-event narratives → `episodes/<name>.md`.
+**`DURABILITY_ON == false`** — semantic LLM routing. Eligibility:
+- Parity (`STRICT_MODE == false`): every extracted candidate.
+- Strict-without-durability: `deferred_status != "persisted"` AND `gate_status == "qualified"`.
 
-**When `STRICT_MODE == false` (parity flow):**
-- Every extracted candidate consolidates via semantic LLM routing (same surface split as above).
+Destinations per `references/scoring.md` §Destination: reflective conclusions / durable preferences / decisions / lessons / obligations / relationships / identity / architecture → `RTMEMORY.md`; repeatable actionable know-how → `PROCEDURES.md`; bounded multi-event narratives → `episodes/<name>.md`. Apply `add_entry`.
 
 ### Payloads for index.py
 
@@ -303,7 +298,7 @@ Process daily logs one at a time. Dispatch per-route.
 }
 ```
 
-Durability fields are only required in strict+durability mode. Parity and strict-without-durability modes may omit them — `index.py --add` tolerates absence.
+Durability fields are required only in strict+durability; other modes omit them.
 
 **`$TMPDIR/merge.json`** (for `--reinforce`):
 
@@ -389,7 +384,20 @@ Generate 1–2 non-obvious insights from the health output and this cycle's rout
 
 Write this cycle's `healthScore`, `healthMetrics`, `insights`, and route counters back into `runtime/reflections-metadata.json`. This updates `lastDream`, appends to `healthHistory`, and makes the weekly helper (Step 4.4) see a fresh snapshot next cycle.
 
-Compose `$TMPDIR/stats.json` from the health.py output + Step 3.5 insights + cycle route counters:
+### 3.6.a — Resolve token_usage deterministically [SCRIPT]
+
+Apply the runtime token-usage rule (Execution Guardrails). Runs on every cycle — no fallthrough:
+
+```bash
+python3 $SCRIPTS_DIR/report.py --emit-token-usage \
+  [--token-prompt <N> --token-completion <N> --token-total <N> --token-source exact \
+   | --prompt-chars <N> --completion-chars <N>] \
+  > $TMPDIR/token_usage.json
+```
+
+### 3.6.b — Compose stats.json
+
+`$TMPDIR/stats.json` = health.py output + Step 3.5 insights + cycle route counters + the `token_usage` block resolved in 3.6.a (verbatim):
 
 ```json
 {
@@ -407,15 +415,20 @@ Compose `$TMPDIR/stats.json` from the health.py output + Step 3.5 insights + cyc
       "deferred": <durability deferred_count or 0>,
       "rejected": <durability rejected_count or 0>
     }
-  }
+  },
+  "token_usage": <contents of $TMPDIR/token_usage.json verbatim>
 }
 ```
 
 In parity / strict-without-durability mode, omit `lastCycleDurable` (or set all counters to 0). The `gateStats` block tolerates missing keys.
 
+### 3.6.c — Apply stats
+
 ```bash
 python3 $SCRIPTS_DIR/index.py --index runtime/reflections-metadata.json --update-stats $TMPDIR/stats.json
 ```
+
+`index.py` appends to `stats.tokenHistory` (cap 90) only when `source ∈ {exact, approximate}`; unavailable rows are skipped (no fabrication).
 
 ---
 
@@ -444,13 +457,17 @@ Mode-aware details payload:
    "entries_durable_deferred": N, "entries_durable_rejected": N, "logs_marked_consolidated": N}
   ```
 
+Apply the runtime token-usage rule (Execution Guardrails) to pick the token/char args below:
+
 ```bash
 python3 $SCRIPTS_DIR/append_memory_log.py \
   --telemetry-dir $TELEMETRY_ROOT \
   --status ok --event run_completed \
   --profile <profile> --mode scheduled \
   --agent-id <agent id or main> \
-  --details-json '<payload>'
+  --details-json '<payload>' \
+  [--token-prompt <N> --token-completion <N> --token-total <N> --token-source exact \
+   | --prompt-chars <N> --completion-chars <N>]
 ```
 
 ### 4.3 Check notify gate
@@ -475,6 +492,8 @@ python3 $SCRIPTS_DIR/report.py \
   --new <N> --updated <N> --archived <N> \
   [--gate-qualified <N> --gate-deferred <N>] \
   [--durable-promoted <N> --durable-merged <N> --durable-compressed <N> --durable-deferred <N> --durable-rejected <N>] \
+  [--token-prompt <N> --token-completion <N> --token-total <N> --token-source exact \
+   | --prompt-chars <N> --completion-chars <N>]   # v1.5.0: exact OR char-count; scripts own the math
   [--weekly]   # add this flag only when WEEKLY_FLAG is set
   > $TMPDIR/reflections-report-cycle.json
 ```
@@ -495,6 +514,8 @@ Emit the notification using **only** fields from `$TMPDIR/reflections-report-cyc
    1. {weekly.biggest_memories[0].summary}
    2. {weekly.biggest_memories[1].summary}
    3. {weekly.biggest_memories[2].summary}
+
+🪙 Weekly Token Usage: {token line per references/runtime-templates.md §Token-usage — omit entire line if source == "unavailable"}
 ```
 
 If fewer than 3 biggest-memories are returned, render only the entries present. If `weekly_snapshot_available == false`, omit the block entirely.
@@ -517,6 +538,8 @@ If fewer than 3 biggest-memories are returned, render only the entries present. 
 
 ⏳ Stale: {one stale result if any, from Step 2.8 output}
 
+🪙 Token Usage: {token line per references/runtime-templates.md §Token-usage — omit entire line if source == "unavailable"}
+
 {milestones[0] if any}
 {milestones[1] if any}
 💬 {LLM-composed Let the user know if there are something missed}
@@ -534,6 +557,8 @@ If fewer than 3 biggest-memories are returned, render only the entries present. 
 | `{total_before}` / `{total_after}` / `{percent_growth}` | `.total_before` / `.total_after` / `.percent_growth` |
 | `{health_score}` / `{rating}` | `.health_score` / `.rating` |
 | `{milestones[...]}` | `.milestones[]` |
+| `Token Usage line` | `.token_usage` — render `Token Usage:` when `source == "exact"`, `Token Usage (approx):` when `"approximate"`, **omit the entire line** when `"unavailable"`. Variants: full triple when all three fields present, total-only when only `total_tokens` is set. |
+| `Weekly Token Usage line` (weekly block only) | `.weekly.weekly_tokens` — same omit-on-unavailable rule |
 
 **LLM-authored fields** (semantic summarization only):
 - `✨ Highlights` — composed from this cycle's promoted entries (read the mutated `reflections-candidates.json` where `route == "promote"`; distill into short bullets)
@@ -555,19 +580,17 @@ python3 $SCRIPTS_DIR/dispatch.py --config $CONFIG_PATH --update-lastrun $MODE_CS
 
 ---
 
-## Blocker Handling
+## Safety + Blocker Handling
 
-If any required script fails, config is missing, or the workspace is unwritable:
-
-1. Write a `run_failed` telemetry event with `--status error --error "<message>"`.
-2. Emit a single blocker message to chat if `sendReport == true`.
+**On blocker** (any required script fails, config missing, workspace unwritable):
+1. Write a `run_failed` telemetry event (`--status error --error "<message>"`).
+2. Emit one blocker message to chat if `sendReport == true`; else silent.
 3. Do NOT mark any daily log. Do NOT partial-commit the index. END.
 
-## Safety Rules
-
+**Invariants:**
 - Never delete daily logs — only mark `<!-- consolidated -->`.
 - Never remove ⚠️ PERMANENT entries during archival.
-- Back up `RTMEMORY.md` to `RTMEMORY.md.bak` before any write that changes it by >30%.
+- Back up `RTMEMORY.md` to `.bak` before any write that changes it by >30%.
 - Back up `runtime/reflections-metadata.json` to `.bak` before mutation.
 
-For design rationale and longer explanations, see `references/reflections-prompt-v1.4-full.md`.
+For design rationale, see `references/reflections-prompt-v1.4-full.md`.

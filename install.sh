@@ -83,6 +83,18 @@ if [ ! -f "$WORKSPACE/PROCEDURES.md" ]; then
     echo "_Last updated: $(date +%Y-%m-%d)_" >> "$WORKSPACE/PROCEDURES.md"
 fi
 
+# Trend surface (workspace root — v1.5.0)
+if [ ! -f "$WORKSPACE/TRENDS.md" ]; then
+    echo "[init] Creating TRENDS.md"
+    {
+        echo "# Trends"
+        echo ""
+        echo "_Observed patterns without stable method._"
+        echo ""
+        echo "---"
+    } > "$WORKSPACE/TRENDS.md"
+fi
+
 # Runtime-owned surfaces
 if [ ! -f "$WORKSPACE/runtime/reflections-metadata.json" ]; then
     echo "[init] Creating runtime/reflections-metadata.json"

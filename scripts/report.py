@@ -73,6 +73,10 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 # Reuse weekly.py's logic
 from weekly import compute_weekly  # type: ignore
 
+# v1.5.0: reuse the token-usage resolution helper defined in append_memory_log.py.
+# Keeps "scripts own math" — ceil(chars/4) approximation lives in ONE place.
+from append_memory_log import resolve_token_usage, _add_token_args  # type: ignore
+
 
 # ────────────────────── index + config loading ──────────────────────
 
@@ -319,6 +323,10 @@ def build_report(args) -> dict:
         weekly = compute_weekly(args.index, days=7, top=3)
         payload['weekly'] = weekly
 
+    # v1.5.0: token_usage — always populate (nulls when unavailable).
+    # Scripts own the math; runtime passes either exact tokens or char counts.
+    payload['token_usage'] = resolve_token_usage(args)
+
     return payload
 
 
@@ -353,7 +361,26 @@ def main():
     parser.add_argument('--weekly', action='store_true',
                         help='Include weekly summary block (triggers weekly.py)')
 
+    # v1.5.0: token-usage CLI args (shared helper with append_memory_log.py)
+    _add_token_args(parser)
+
+    # v1.5.0: deterministic one-shot resolver for Step 3.6 token_usage wiring.
+    # When set, bypass build_report() entirely and emit only the resolved
+    # token_usage dict. Used by the runtime to guarantee a resolved block
+    # before composing stats.json for index.py --update-stats.
+    parser.add_argument('--emit-token-usage', action='store_true',
+                        help='One-shot: emit only the resolved token_usage block (exact|approximate|unavailable) '
+                             'and exit. Does not read the index, compute growth, or run weekly. '
+                             'Use in Step 3.6 to deterministically resolve token_usage before stats.json is composed.')
+
     args = parser.parse_args()
+
+    # One-shot token resolver path — no index read, no report build
+    if args.emit_token_usage:
+        tu = resolve_token_usage(args)
+        print(json.dumps(tu, indent=2, ensure_ascii=False))
+        return 0
+
     result = build_report(args)
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return 0 if result.get('ok') else 2

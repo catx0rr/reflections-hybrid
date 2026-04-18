@@ -134,6 +134,8 @@ Reflections — First Memory Scan Complete!
    2. {insight_2}
    3. {insight_3}
 
+🪙 Token Usage: {per references/runtime-templates.md §Token-usage — omit entire line if source == "unavailable"}
+
 ⏰ Scheduled auto-reflection is now set up.
    You'll receive reports on the configured schedule.
 
@@ -162,6 +164,7 @@ If this is a brand new instance with no daily logs and minimal RTMEMORY.md:
    • 📝 Long-term memory (RTMEMORY.md)
    • 🔄 Workflow procedures (PROCEDURES.md)
    • 📁 Project narratives (episodes/)
+   • 📈 Trend tracking (TRENDS.md)
    • 📊 Reflection reports (memory/.reflections-log.md)
    • 📦 Archive (memory/.reflections-archive.md)
 
@@ -191,8 +194,14 @@ python3 $SCRIPTS_DIR/append_memory_log.py \
   --event run_completed \
   --profile <selected profile> \
   --mode first-reflection \
-  --details-json '{"logs_scanned": <N>, "entries_extracted": <N>, "entries_consolidated": <N>}'
+  --details-json '{"logs_scanned": <N>, "entries_extracted": <N>, "entries_consolidated": <N>}' \
+  [--token-prompt <N> --token-completion <N> --token-total <N> --token-source exact \
+   | --prompt-chars <N> --completion-chars <N>]   # v1.5.0 token_usage (exact OR char-count)
 ```
+
+**Token-usage** (v1.5.0): pass either exact host metadata or char counts; the script computes `ceil(chars/4)` internally per `references/runtime-templates.md` §Token-usage. When neither is available, the envelope defaults to `source: "unavailable"` with nulls — still always written.
+
+If this phase later calls `index.py --update-stats` (for initial stats persistence), include a `token_usage` block in the stats payload so `stats.tokenHistory` gets its first row. Unavailable entries are NOT appended (script skips).
 
 ## Safety Rules
 - Never delete daily log originals — only mark <!-- consolidated -->

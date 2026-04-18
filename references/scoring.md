@@ -270,7 +270,7 @@ Applied in this deterministic order:
 2. **Hard-promote** → `promote`. Duplicates allowed here (hard-trigger justifies a distinct node). If the candidate's `trendKey` matches an existing trend node AND that trend meets both `trendPromoteSupportCount` and `trendPromoteUniqueDayCount` thresholds, additionally set `promotedFromTrend` so the new RTMEMORY node links to its trend origin.
 3. **Merge** — `duplicate_of_existing` is non-null AND resolves in the index AND no hard-trigger → `route = "merge"`. Step 2 calls `index.py --reinforce <mergedInto>`; no new durable node is created. `mergeKey` is appended to the target's `mergeKeys` list.
 4. **Defer (unresolved duplicate)** — `duplicate_of_existing` is non-null but refers to an entry not in the index → `route = "defer"` (re-evaluated next cycle).
-5. **Compress** — `trendKey` set AND `memory_type in {observation, status, trend}` AND no hard-trigger AND `actionable_procedure != true` → `route = "compress"`. Step 2 calls `index.py --compress-trend <trendKey>` which upserts a trend node and updates `memory/TRENDS.md`.
+5. **Compress** — `trendKey` set AND `memory_type in {observation, status, trend}` AND no hard-trigger AND `actionable_procedure != true` → `route = "compress"`. Step 2 calls `index.py --compress-trend <trendKey>` which upserts a trend node and updates `TRENDS.md`.
 6. **Net-score banding** — `promote` if net ≥ `netPromoteThreshold`; `defer` if net ≥ `netDeferThreshold`; else `reject`.
 
 ### Destination split (v1.3.0)
@@ -280,7 +280,7 @@ Applied in this deterministic order:
 | `RTMEMORY.md` | `promote` | Durable reflective conclusions — decisions, lessons, identity/relationship shifts |
 | `PROCEDURES.md` | `promote` (memory_type=procedure + validated actionable) | Repeatable know-how |
 | `episodes/*.md` | `promote` (hard-triggered observations only) | Bounded historical incident narratives |
-| `memory/TRENDS.md` | `compress` | Repeated reality/pattern without stable method (recurring gateway instability, repeated symptom pattern) |
+| `TRENDS.md` | `compress` | Repeated reality/pattern without stable method (recurring gateway instability, repeated symptom pattern) |
 | — (reinforce existing) | `merge` | Duplicate of existing durable node — reinforcement, not a new surface entry |
 | — (no write) | `defer`, `reject` | Held for re-evaluation or discarded |
 
@@ -328,7 +328,7 @@ Destination is only meaningful on routes `promote` or `compress`. Routes `merge`
 | decision, lesson, obligation, relationship, identity, architecture, preference | `RTMEMORY` | `promote` via hard-promote trigger OR net ≥ promote threshold |
 | procedure | `PROCEDURES` | `promote` via `actionable_procedure` hard-trigger AND `structuralEvidence >= 2` |
 | observation | `EPISODE` | `promote` — **only** when a hard-promote trigger fires alongside cross-day relevance. Generic cross-day observations (no hard-trigger, no actionable procedure) route to `compress` → TREND instead. |
-| trend / status | `TREND` | `compress` — weak ops material with a stable `trendKey`. Upserted via `index.py --compress-trend`; surface at `memory/TRENDS.md`. |
+| trend / status | `TREND` | `compress` — weak ops material with a stable `trendKey`. Upserted via `index.py --compress-trend`; surface at `TRENDS.md`. |
 | duplicate-of-existing (any memory_type, no hard-trigger) | — | `merge` — reinforces target at `mergedInto` via `index.py --reinforce`. No new surface entry. |
 | (any other / NONE) | `RTMEMORY` fallback | `promote` but memory_type doesn't match above |
 
@@ -355,7 +355,7 @@ Durability fields persist through `index.py --add` / `--reinforce` / `--compress
 ### Shipped status (v1.3.0)
 
 - ✅ `merge` route: `index.py --reinforce <id>` bumps existing durable node's `referenceCount` / `sessionSources` / `lastReferenced` / `uniqueDayCount` and appends to `mergeKeys` / `reinforcedBy[]`. No new surface entry.
-- ✅ `compress` route + `TREND` destination: `index.py --compress-trend <key>` upserts a trend node (`memoryType: "trend"`); the human-readable surface is `memory/TRENDS.md` with one `### <trendKey>` section per active trend.
+- ✅ `compress` route + `TREND` destination: `index.py --compress-trend <key>` upserts a trend node (`memoryType: "trend"`); the human-readable surface is `TRENDS.md` with one `### <trendKey>` section per active trend.
 - ✅ Trend-to-durable promotion: when accumulated trend crosses support thresholds AND a fresh cycle adds a hard-promote trigger, the new RTMEMORY node carries `promotedFromTrend` back to the original trend node (which stays in place as historical context).
 - ⏭ Trend decay (automatic expiration of old unreinforced trends) — future work; current cycle keeps trends indefinitely.
 

@@ -375,6 +375,20 @@ def update_stats(index: dict, stats_data: dict) -> dict:
             history = history[-90:]
         stats['healthHistory'] = history
 
+    # v1.5.0: append token history (mirror pattern) — only when source ∈ {exact, approximate}.
+    # Unavailable entries are NOT appended — no fabrication, no placeholder rows.
+    tu = stats_data.get('token_usage')
+    if isinstance(tu, dict) and tu.get('source') in ('exact', 'approximate'):
+        token_history = stats.get('tokenHistory', [])
+        token_history.append({
+            'date': now[:10],
+            'total_tokens': tu.get('total_tokens'),
+            'source': tu.get('source'),
+        })
+        if len(token_history) > 90:
+            token_history = token_history[-90:]
+        stats['tokenHistory'] = token_history
+
     index['stats'] = stats
     return stats
 

@@ -96,7 +96,7 @@ Business-employee cadence aligns with typical work rhythm (before shift, midday,
 
 - **Promotes** one-off but high-consequence items (decisions with downstream consequence, obligations/boundaries, relationship or identity shifts, architecture conclusions) even when they are structurally underweight — via the rescue path in Step 1.7
 - **Merges** (v1.3.0) duplicate candidates (`duplicate_of_existing` resolves in the index, no hard-trigger) into the existing durable node instead of creating a duplicate. `index.py --reinforce` bumps `referenceCount`, `lastReferenced`, and appends to `mergeKeys` / `reinforcedBy[]`.
-- **Compresses** (v1.3.0) repeated weak ops material with a stable `trendKey` (observation/status/trend memory types without actionable procedure) into a single trend node at `memory/TRENDS.md`. `index.py --compress-trend` upserts the trend entry (`memoryType: "trend"`) and bumps `trendSupportCount` / `trendLastUpdated`.
+- **Compresses** (v1.3.0) repeated weak ops material with a stable `trendKey` (observation/status/trend memory types without actionable procedure) into a single trend node at `TRENDS.md`. `index.py --compress-trend` upserts the trend entry (`memoryType: "trend"`) and bumps `trendSupportCount` / `trendLastUpdated`.
 - **Rejects** telemetry-noise, pure-status, and same-day pattern-only content regardless of reinforcement.
 - **Defers** unresolved duplicates (`duplicate_of_existing` refers to an entry no longer in the index) or borderline net scores — recorded in the deferred store for re-evaluation.
 

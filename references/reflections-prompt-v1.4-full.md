@@ -39,7 +39,7 @@ These are the authoritative file locations. Do not read from or write to old pat
 | Reflective memory | `RTMEMORY.md` |
 | Procedures | `PROCEDURES.md` |
 | Episodes | `episodes/*.md` |
-| Trends (v1.3.0+) | `memory/TRENDS.md` |
+| Trends (v1.3.0+) | `TRENDS.md` |
 | Metadata/index | `runtime/reflections-metadata.json` |
 | Reflections log | `memory/.reflections-log.md` |
 | Archive | `memory/.reflections-archive.md` |
@@ -451,7 +451,7 @@ When `STRICT_MODE == true` AND `config.durability.enabled == true`, each candida
 |---------|--------------|--------|
 | `promote` | `RTMEMORY` \| `PROCEDURES` \| `EPISODE` | **New durable node.** Append to the destination file (`RTMEMORY.md` / `PROCEDURES.md` / `episodes/<name>.md`); call `index.py --add` with the full durability field payload. |
 | `merge` | `NONE` (action target is `mergedInto`) | **Reinforce existing durable node.** Do NOT create a new surface entry. Call `index.py --reinforce <mergedInto> --from $TMPDIR/merge.json` with the candidate's source/mergeKey/mergeReason/refined summary. |
-| `compress` | `TREND` | **Upsert trend node.** Call `index.py --compress-trend <trendKey> --from $TMPDIR/trend.json`. If an existing trend entry matches `trendKey`, it is reinforced (bumps `trendSupportCount`, `trendLastUpdated`, adds source); otherwise a new trend entry is created with `memoryType: "trend"`. Also append/update the trend section in `memory/TRENDS.md` so there is a human-readable surface. |
+| `compress` | `TREND` | **Upsert trend node.** Call `index.py --compress-trend <trendKey> --from $TMPDIR/trend.json`. If an existing trend entry matches `trendKey`, it is reinforced (bumps `trendSupportCount`, `trendLastUpdated`, adds source); otherwise a new trend entry is created with `memoryType: "trend"`. Also append/update the trend section in `TRENDS.md` so there is a human-readable surface. |
 | `defer` | `NONE` | **Already persisted** by `deferred.py --append` at end of Step 1.8. Nothing to do in Step 2. |
 | `reject` | `NONE` | **Discarded.** Nothing written anywhere. |
 
@@ -562,7 +562,7 @@ python3 $SCRIPTS_DIR/index.py --index runtime/reflections-metadata.json \
 
 If a trend entry matching `trendKey` exists, the script reinforces it (bumps `trendSupportCount`, `trendLastUpdated`, adds to `trendSources`, increments `sourceCount`). If no trend entry matches, a new trend entry is created with `memoryType: "trend"`.
 
-**After any trend upsert**, also update the human-readable `memory/TRENDS.md` surface:
+**After any trend upsert**, also update the human-readable `TRENDS.md` surface:
 - Find or create the section headed `### <trendKey>`
 - Update *First observed*, *Last reinforced*, *Support*, *Pattern*, *Related entries*, *Node ID* lines
 - Keep the file append-only for promoted-trend entries (if a trend promotes to RTMEMORY via a hard-trigger on a subsequent cycle, move it under a "Promoted Trends" subsection)

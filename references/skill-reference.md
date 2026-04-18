@@ -26,7 +26,7 @@ It is not a plugin. It does not own active memory recall, promotion, or dreaming
 | `RTMEMORY.md` | Reflective long-horizon continuity (decisions, lessons, identity/relationship shifts) | Append, update, archive |
 | `PROCEDURES.md` | Reusable workflows, tool usage, stable operating patterns | Append, update |
 | `episodes/*.md` | Project narratives | Append only |
-| `memory/TRENDS.md` (v1.3.0+) | Repeated reality/pattern (recurring ops conditions, accumulated symptom patterns) | Upsert per `trendKey` |
+| `TRENDS.md` (v1.3.0+) | Repeated reality/pattern (recurring ops conditions, accumulated symptom patterns) | Upsert per `trendKey` |
 | `runtime/reflections-metadata.json` | Runtime entry metadata (v1.0.0 schema, trend entries have `memoryType: "trend"`) | Rebuilt each consolidation |
 | `memory/.reflections-log.md` | Consolidation report log | Append only |
 | `memory/.reflections-archive.md` | Low-importance compressed archive | Append only |
@@ -197,7 +197,7 @@ Process daily logs one at a time. For each daily log, dispatch per-candidate bas
 |---------|--------------|
 | `promote` | New durable node. Append to RTMEMORY/PROCEDURES/episodes per `destination`; call `index.py --add` with full durability field payload. |
 | `merge` | Reinforce existing durable node (no surface write). Call `index.py --reinforce <mergedInto> --from $TMPDIR/merge.json`. |
-| `compress` | Upsert trend node. Call `index.py --compress-trend <trendKey> --from $TMPDIR/trend.json`. Also update `memory/TRENDS.md` section. |
+| `compress` | Upsert trend node. Call `index.py --compress-trend <trendKey> --from $TMPDIR/trend.json`. Also update `TRENDS.md` section. |
 | `defer` | No Step 2 action — already persisted by `deferred.py --append` at end of Step 1.8. |
 | `reject` | Discarded. No action. |
 

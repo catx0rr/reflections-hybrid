@@ -117,6 +117,7 @@ Ensure the following files exist (create from `references/memory-template.md` te
 - `RTMEMORY.md`
 - `runtime/reflections-metadata.json`
 - `PROCEDURES.md`
+- `TRENDS.md`
 - `memory/.reflections-log.md`
 - `memory/.reflections-archive.md`
 
@@ -234,7 +235,7 @@ schedule: { kind: "cron", expr: "<DISPATCH_CADENCE>", tz: "<timezone from reflec
 payload: {
     kind: "agentTurn",
     message: "Run auto memory consolidation.\n\nRead <RESOLVED_SKILL_ROOT>/runtime/reflections-prompt.md and follow every step strictly.\n\nConfig: <RESOLVED_CONFIG_PATH>\nWorking directory: <RESOLVED_WORKSPACE_PATH>"
-    timeoutSeconds: 1200
+    timeoutSeconds: 1800
 }
 sessionTarget: "isolated"
 delivery: { mode: "announce", channel: <last channel the operator used>, to: <the operator specific id of last channel used> }
@@ -278,6 +279,7 @@ The cron job always points to `runtime/reflections-prompt.md`. The first-reflect
 - [ ] `RTMEMORY.md` exists with section headers
 - [ ] `runtime/reflections-metadata.json` exists
 - [ ] `PROCEDURES.md` exists
+- [ ] `TRENDS.md` exists (workspace root)
 - [ ] `memory/.reflections-log.md` exists
 - [ ] First consolidation has run successfully
 
@@ -289,6 +291,7 @@ Reflections writes to:
 - `RTMEMORY.md` — reflective long-horizon continuity
 - `PROCEDURES.md` — reusable workflows and operating patterns
 - `episodes/*.md` — bounded event/project narratives
+- `TRENDS.md` — recurring patterns / weak ops material (workspace root)
 - `runtime/reflections-metadata.json` — consolidation metadata and health stats
 - `memory/.reflections-log.md` — human-readable consolidation cycle reports
 - `TELEMETRY_ROOT/memory-log-YYYY-MM-DD.jsonl` — unified machine telemetry
